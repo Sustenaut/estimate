@@ -1,0 +1,79 @@
+# Build and deploy the estimate site (estimate.sustenaut.eu) on each merge to
+# main that touches the models, the site or publication 0's objects. Google
+# credentials come from Workload Identity Federation (infra/notebooks.tf): no
+# keys are stored in GitHub.
+name: estimate site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "estimate/**"
+      - "estimate-site/**"
+      - "publication-0/objects/**"
+      - "requirements.lock"
+      - ".github/workflows/estimate-site.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: estimate-site
+  cancel-in-progress: false
+
+env:
+  REGION: europe-north1
+  IMAGE: europe-north1-docker.pkg.dev/sustenaut/estimate-site/estimate-site
+  WIF_PROVIDER: projects/948171295184/locations/global/workloadIdentityPools/github/providers/github
+  DEPLOYER: sustenaut-deployer@sustenaut.iam.gserviceaccount.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      # pub is built from publet; Pyodide and the wheels are fetched and
+      # checked against estimate-site/vendor-lock.json inside the build.
+      - name: Build the image
+        run: |
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+          docker build -f estimate-site/Dockerfile --build-arg GIT_COMMIT="${GITHUB_SHA}" -t "${IMAGE}:${GITHUB_SHA}" .
+
+      # Ask the image for the index, a model page, Pyodide and a model's
+      # inputs, so a site that builds wrong fails here instead of online.
+      - name: Start the image
+        run: |
+          docker run -d --name site -p 8080:8080 "${IMAGE}:${GITHUB_SHA}"
+          for i in $(seq 1 30); do curl -fs localhost:8080/healthz && break; sleep 1; done
+          curl -fs localhost:8080/ | grep -q 'Sustenaut estimates'
+          curl -fs localhost:8080/example/ | grep -q 'data-pyodide-index-url="../vendor/pyodide/'
+          curl -fsI localhost:8080/vendor/pyodide/v314.0.0/pyodide.asm.wasm | grep -qi 'content-type: application/wasm'
+          curl -fsI localhost:8080/vendor/pyodide/v314.0.0/pyodide.asm.mjs | grep -qi 'content-type: text/javascript'
+          curl -fs localhost:8080/example/public/build.json | grep -q "${GITHUB_SHA}"
+          curl -fs localhost:8080/example/public/bundle/index.json | grep -q '"bundle"'
+
+      # Open each page in headless Chromium: it must load nothing from any
+      # other origin and compute what the models compute natively.
+      - name: Check the pages in a browser
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --quiet "$(grep -E '^numpy==' requirements.lock)" playwright==1.64.0
+          .venv/bin/playwright install --with-deps --only-shell chromium
+          .venv/bin/python estimate-site/browser_check.py --url http://localhost:8080
+          docker rm -f site
+
+      - name: Push the image
+        run: docker push "${IMAGE}:${GITHUB_SHA}"
+
+      - name: Deploy
+        run: gcloud run deploy estimate-site --image "${IMAGE}:${GITHUB_SHA}" --region "${REGION}" --quiet

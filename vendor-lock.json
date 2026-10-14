@@ -1,0 +1,203 @@
+{
+ "marimo": "0.25.0",
+ "pyodide": "314.0.0",
+ "pyodide_core": {
+  "pyodide.asm.mjs": "7808c4d7a9fee23a02b0c8b7bbd51b1358e8d41bbe89e5c0ee9c0c4db7b9328f",
+  "pyodide.asm.wasm": "4d23bd074cc536a96660c9168e223e3aaf01944096ad829737a9c87fec4b28eb",
+  "python_stdlib.zip": "1215cd239a270c13a3ecb1a84c84b7b3241baf7ea7f54615f00d79ff69c82787"
+ },
+ "npm": {
+  "mathjax-full@3.2.2": "d8f080d2e4bdfb75284aac34d5eff155002eca47798b1d4e4bde31453e653f87",
+  "lucide-static@0.452.0": "e185cb142bec9c578c06bc87ffef05543b951a0ee832bd9cda13f8305b7d7af0"
+ },
+ "info": {
+  "abi_version": "2026_0",
+  "arch": "wasm32",
+  "platform": "emscripten_5_0_3",
+  "python": "3.14.0"
+ },
+ "packages": {
+  "docutils": {
+   "depends": [],
+   "file_name": "docutils-0.22.4-py3-none-any.whl",
+   "imports": [
+    "docutils"
+   ],
+   "install_dir": "site",
+   "name": "docutils",
+   "package_type": "package",
+   "sha256": "249c8ea61fb366832a25f6c8072ed84e70b56d7fe29be1a57c878194f6ab4a05",
+   "unvendored_tests": false,
+   "version": "0.22.4"
+  },
+  "jedi": {
+   "depends": [
+    "parso"
+   ],
+   "file_name": "jedi-0.19.2-py2.py3-none-any.whl",
+   "imports": [
+    "jedi"
+   ],
+   "install_dir": "site",
+   "name": "jedi",
+   "package_type": "package",
+   "sha256": "6c13c4ecc241e49c4fea0fd165f766fc5f2d915c2a6729feed44e8cc199e2005",
+   "unvendored_tests": true,
+   "version": "0.19.2"
+  },
+  "marimo-base": {
+   "name": "marimo",
+   "version": "0.25.0",
+   "file_name": "https://files.pythonhosted.org/packages/73/2e/3ebf59bd2b4f9a885d8e98be7a0ff892faf0ff2196a0d1935a4752f26c98/marimo_base-0.25.0-py3-none-any.whl",
+   "install_dir": "site",
+   "sha256": "a2207884c0109d91773151fcdd386cd8c0d814bd0ec2825cf69f013e5d8827dc",
+   "imports": [],
+   "depends": [
+    "markdown",
+    "narwhals",
+    "packaging",
+    "pymdown-extensions",
+    "msgspec"
+   ]
+  },
+  "markdown": {
+   "name": "Markdown",
+   "version": "3.10.2",
+   "file_name": "https://files.pythonhosted.org/packages/de/1f/77fa3081e4f66ca3576c896ae5d31c3002ac6607f9747d2e3aa49227e464/markdown-3.10.2-py3-none-any.whl",
+   "install_dir": "site",
+   "sha256": "e91464b71ae3ee7afd3017d9f358ef0baf158fd9a298db92f1d4761133824c36",
+   "imports": [
+    "markdown"
+   ],
+   "depends": []
+  },
+  "micropip": {
+   "depends": [],
+   "file_name": "micropip-0.11.1-py3-none-any.whl",
+   "imports": [
+    "micropip"
+   ],
+   "install_dir": "site",
+   "name": "micropip",
+   "package_type": "package",
+   "sha256": "80bd0a62a8bbadb7aa4ba2eb00423d3735523a508bdd4aea54ad79b65fd4ebbf",
+   "unvendored_tests": false,
+   "version": "0.11.1"
+  },
+  "msgspec": {
+   "depends": [],
+   "file_name": "msgspec-0.20.0-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+   "imports": [
+    "msgspec"
+   ],
+   "install_dir": "site",
+   "name": "msgspec",
+   "package_type": "package",
+   "sha256": "28e18b0a03c0223769663ee5797351d2290908737b692c902db1965eff19e7ab",
+   "unvendored_tests": false,
+   "version": "0.20.0"
+  },
+  "narwhals": {
+   "name": "narwhals",
+   "version": "2.19.0",
+   "file_name": "https://files.pythonhosted.org/packages/37/72/e61e3091e0e00fae9d3a8ef85ece9d2cd4b5966058e1f2901ce42679eebf/narwhals-2.19.0-py3-none-any.whl",
+   "install_dir": "site",
+   "sha256": "1f8dfa4a33a6dbff878c3e9be4c3b455dfcaf2a9322f1357db00e4e92e95b84b",
+   "imports": [
+    "narwhals"
+   ],
+   "depends": []
+  },
+  "numpy": {
+   "depends": [],
+   "file_name": "numpy-2.4.3-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+   "imports": [
+    "numpy"
+   ],
+   "install_dir": "site",
+   "name": "numpy",
+   "package_type": "package",
+   "sha256": "c90162c4b09a5d8ac3ce975e0b4282ed5df06de446e3d0aec7406821fc5346e1",
+   "unvendored_tests": false,
+   "version": "2.4.3"
+  },
+  "packaging": {
+   "depends": [],
+   "file_name": "packaging-26.1-py3-none-any.whl",
+   "imports": [
+    "packaging"
+   ],
+   "install_dir": "site",
+   "name": "packaging",
+   "package_type": "package",
+   "sha256": "b5f9dcd6882f715bf582db6f19813d4c1e64ecbd1899348f827bd059c275e7c1",
+   "unvendored_tests": false,
+   "version": "26.1"
+  },
+  "parso": {
+   "depends": [],
+   "file_name": "parso-0.8.6-py2.py3-none-any.whl",
+   "imports": [
+    "parso"
+   ],
+   "install_dir": "site",
+   "name": "parso",
+   "package_type": "package",
+   "sha256": "767492e969d08e750366b23ac2c25237fdba88f9ee0bacb6e4e9832a67796984",
+   "unvendored_tests": false,
+   "version": "0.8.6"
+  },
+  "pygments": {
+   "depends": [],
+   "file_name": "pygments-2.20.0-py3-none-any.whl",
+   "imports": [
+    "pygments"
+   ],
+   "install_dir": "site",
+   "name": "Pygments",
+   "package_type": "package",
+   "sha256": "f6a334f8a09102f73df39be89f58a0cb714e994f679ae7bc290ef5209b965ac6",
+   "unvendored_tests": false,
+   "version": "2.20.0"
+  },
+  "pymdown-extensions": {
+   "name": "pymdown-extensions",
+   "version": "10.21.3",
+   "file_name": "https://files.pythonhosted.org/packages/7e/85/545a951eecc270fcd688288c600017e2050a1aacb56c711d208586d3e470/pymdown_extensions-10.21.3-py3-none-any.whl",
+   "install_dir": "site",
+   "sha256": "d7a5d08014fc571e80ca21dd6f854e31f94c489800350564d55d15b3c41e76b6",
+   "imports": [],
+   "depends": [
+    "markdown",
+    "pyyaml"
+   ]
+  },
+  "pyodide-http": {
+   "depends": [],
+   "file_name": "pyodide_http-0.2.2-py3-none-any.whl",
+   "imports": [
+    "pyodide_http"
+   ],
+   "install_dir": "site",
+   "name": "pyodide-http",
+   "package_type": "package",
+   "sha256": "015380fbb70f22b517c15ce29163b47886fdda69b3e3823d71f4bbb0c3461746",
+   "unvendored_tests": false,
+   "version": "0.2.2"
+  },
+  "pyyaml": {
+   "depends": [],
+   "file_name": "pyyaml-6.0.3-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+   "imports": [
+    "_yaml",
+    "yaml"
+   ],
+   "install_dir": "site",
+   "name": "pyyaml",
+   "package_type": "package",
+   "sha256": "4a62fa48b4a70d44a3beaa93d38785373056dfbc3c8f61eb7914c2893a537e62",
+   "unvendored_tests": false,
+   "version": "6.0.3"
+  }
+ }
+}
