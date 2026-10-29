@@ -244,7 +244,7 @@ def citation(notebook_location) -> dict:
 
 def citation_text(cite: dict) -> str:
     commit = cite.get("commit") or "unknown"
-    code = f"commit [`{commit[:12]}`](https://github.com/schryer/business-plan/commit/{commit})" if commit != "unknown" else "an unknown commit"
+    code = f"commit [`{commit[:12]}`](https://github.com/Sustenaut/business-plan/commit/{commit})" if commit != "unknown" else "an unknown commit"
     if cite.get("wheel"):
         return f"Computed by `{cite['wheel']}` (sha256 `{cite['sha256']}`), built from {code}."
     return f"Computed by the `estimate` package in the working tree at {code} (not a built wheel)."
