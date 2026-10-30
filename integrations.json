@@ -1,0 +1,67 @@
+{
+  "uses": [
+    {
+      "plugin": "bitwarden.secrets",
+      "paths": [
+        "with-secrets",
+        "with-secrets.json"
+      ]
+    },
+    {
+      "plugin": "github.actions-oidc",
+      "paths": [
+        ".github/workflows/deploy.yml",
+        "fetch-publication.sh"
+      ]
+    },
+    {
+      "plugin": "github.repo-ops",
+      "paths": [
+        "fetch-publication.sh"
+      ]
+    },
+    {
+      "plugin": "google.cloud",
+      "paths": [
+        ".github/workflows/deploy.yml"
+      ]
+    },
+    {
+      "plugin": "jsdelivr.purge",
+      "paths": [
+        "build.py"
+      ]
+    },
+    {
+      "plugin": "npm.publish",
+      "paths": [
+        "build.py"
+      ]
+    },
+    {
+      "plugin": "pypi.publish",
+      "paths": [
+        "vendor-lock.json"
+      ]
+    }
+  ],
+  "own_hosts": [
+    "sustenaut.eu"
+  ],
+  "other_hosts": [
+    {
+      "host": "unpkg.com",
+      "reason": "A download at build time, kept in the vendored files; no account or key"
+    },
+    {
+      "host": "wasm.marimo.app",
+      "reason": "A download at build time, kept in the vendored files; no account or key"
+    }
+  ],
+  "exclude": [
+    {
+      "path": "tests/**",
+      "reason": "Fakes and test data"
+    }
+  ]
+}
