@@ -7,8 +7,8 @@
 2. the result the page computes in Pyodide equals the native one, to the
    last digit.
 
-    python estimate-site/browser_check.py build/estimate-site      # serves it
-    python estimate-site/browser_check.py --url http://localhost:8080
+    python browser_check.py build/estimate-site      # serves it
+    python browser_check.py --url http://localhost:8080
 
 Serving a folder, it sends the same headers as nginx (headers.conf),
 Content-Security-Policy included. Needs `pip install playwright` and a
@@ -31,7 +31,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent
+ROOT = HERE
 TIMEOUT_MS = 180_000
 
 
