@@ -6,7 +6,7 @@
 # Cloud Run supplies PORT=8080; IAP in front of the service handles the login.
 
 # pub writes publication 0's reading data, which the pages take inputs from.
-# Pinned by commit, as in pub-site/Dockerfile; move both together.
+# Pinned by commit, as in Sustenaut/pub-site's Dockerfile; move both together.
 FROM docker.io/library/rust:1-slim AS pub
 ARG PUBLET_REV=07157653fcde075722b6bcb084c6213452abfc7d
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
