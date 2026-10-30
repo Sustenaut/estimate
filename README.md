@@ -1,4 +1,4 @@
-# estimate-site
+# estimate
 
 The models in `estimate/` as pages at
 [estimate.sustenaut.eu](https://estimate.sustenaut.eu), behind the same
@@ -37,12 +37,14 @@ commit. `notebooks/example.py` is the smallest such page.
 ## Building it
 
 ```sh
-make estimate PUB=path/to/pub    # into build/estimate-site/
-make estimate-check              # headless Chromium: same origin only, same numbers as pytest
+uv venv --python 3.14 .venv && uv pip install --python .venv/bin/python -r requirements.lock
+./fetch-publication.sh                                       # without a token, gh downloads the release: it must be able to read business-plan
+.venv/bin/python build.py site --out build/estimate-site --pub path/to/pub
+.venv/bin/pip install playwright==1.64.0 && .venv/bin/python browser_check.py build/estimate-site   # headless Chromium: same origin only, same numbers as pytest
 python3 -m http.server -d build/estimate-site 8000
 ```
 
-`PUB` must be a `pub` with `bundle` (publet at the `PUBLET_REV` in the
+`pub` must be one with `bundle` (publet at the `PUBLET_REV` in the
 Dockerfile). `build.py site`:
 
 1. builds `estimate/` into a wheel, the same bytes for the same source;
@@ -55,7 +57,7 @@ Dockerfile). `build.py site`:
    the jsDelivr and unpkg addresses in marimo's scripts to `/vendor/npm/`;
 5. writes the index page listing the models.
 
-The export needs `uv` (in requirements.lock): marimo runs ruff through it
+The export needs `uv` (in `requirements.lock`): marimo runs ruff through it
 to look for notebook-local imports, fetching ruff the first time.
 
 ## Changing marimo or Pyodide
@@ -63,19 +65,25 @@ to look for notebook-local imports, fetching ruff the first time.
 The versions are pinned together: `MARIMO_VERSION` and `PYODIDE_VERSION` in
 `build.py`, marimo in `requirements.lock`, and every file in
 `vendor-lock.json`. After changing them, run
-`.venv/bin/python estimate-site/build.py lock`, which takes marimo's own
+`.venv/bin/python build.py lock`, which takes marimo's own
 Pyodide lockfile for that pair, keeps the packages the pages load and their
 dependencies (`PACKAGES`), and records each file's sha256. If a page then
-loads something not pinned, `make estimate-check` shows the 404.
+loads something not pinned, `browser_check.py` shows the 404.
+
+## Updating the objects
+
+The objects change in business-plan. Its `publication` workflow releases them as
+`publication-0/YYYY-MM-DD.N`; put that tag and the sha256 its release notes give in
+`publication.json`, in a pull request here.
 
 ## Deploying
 
-`.github/workflows/estimate-site.yml` builds the image
-(`podman build -f estimate-site/Dockerfile --build-arg GIT_COMMIT=$(git rev-parse HEAD) -t estimate-site .`),
-asks it for the index, a page, Pyodide and the inputs, runs
-`browser_check.py` against it, and deploys on each merge to main that
-touches `estimate/`, `estimate-site/`, publication 0's objects or
-`requirements.lock`. The Cloud Run service, its image repository and the
-domain mapping are in `infra/estimate-site.tf`; the `estimate` DNS record
-is in schryer/schryer-eu-infra (`sustenaut.tf`). First-time setup is in
-`help/notebooks.md`.
+`.github/workflows/deploy.yml` fetches the pinned publication, builds the image,
+asks it for the index, a page, Pyodide and the inputs, runs `browser_check.py`
+against it, and deploys on each merge to main. It needs no secret:
+storage.sustenaut.eu takes the job's OpenID Connect token, as its `publications`
+tenant names `github:Sustenaut/estimate` as a reader, and Google credentials come
+from Workload Identity Federation (this repository is in business-plan's
+`var.github_repositories`). The Cloud Run service, its image repository and the
+domain mapping are in business-plan's `infra/estimate-site.tf`, and the `estimate`
+DNS record is in its `pubkit.json` hosting block.

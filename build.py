@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Build estimate.sustenaut.eu: every notebook in estimate-site/notebooks/ as
+"""Build estimate.sustenaut.eu: every notebook in notebooks/ as
 a marimo WebAssembly page that runs in the visitor's browser, with every file
 it loads served from the same origin.
 
-    python estimate-site/build.py site --out build/estimate-site --pub pub
-    python estimate-site/build.py lock     # re-pin vendor-lock.json (network)
+    python build.py site --out build/estimate-site --pub pub
+    python build.py lock     # re-pin vendor-lock.json (network)
 
 `site` does, in order:
 
@@ -43,7 +43,7 @@ import zipfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent
+ROOT = HERE
 LOCK = HERE / "vendor-lock.json"
 NOTEBOOKS = HERE / "notebooks"
 
@@ -171,7 +171,7 @@ def wheel(out: Path) -> Path:
         "Summary: Sustenaut's estimate models and the helpers their pages use\n"
         "Requires-Python: >=3.10\nRequires-Dist: numpy\n"
     ).encode()
-    files[f"{dist}.dist-info/WHEEL"] = b"Wheel-Version: 1.0\nGenerator: estimate-site/build.py\nRoot-Is-Purelib: true\nTag: py3-none-any\n"
+    files[f"{dist}.dist-info/WHEEL"] = b"Wheel-Version: 1.0\nGenerator: build.py\nRoot-Is-Purelib: true\nTag: py3-none-any\n"
     record = "".join(
         f"{name},sha256={base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b'=').decode()},{len(data)}\n"
         for name, data in files.items()
@@ -297,7 +297,7 @@ def site(out: Path, cache: Path, pub: str | None, bundle: Path | None, commit: s
     if bundle is None:
         bundle = work / "bundle"
         subprocess.run(
-            [pub or "pub", "bundle", f"--dir={ROOT / 'publication-0' / 'objects'}", f"--out={bundle}", f"--base={PUB_BASE}", f"--title={PUB_TITLE}"],
+            [pub or "pub", "bundle", f"--dir={ROOT / 'objects'}", f"--out={bundle}", f"--base={PUB_BASE}", f"--title={PUB_TITLE}"],
             check=True,
         )
     vendor(out / "vendor", cache)

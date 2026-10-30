@@ -1,5 +1,5 @@
 """The estimate models, the helpers their pages use, and the site build
-(estimate-site/): the notebooks run natively, inputs come from a publication
+(): the notebooks run natively, inputs come from a publication
 bundle when it has them, links match pub.sustenaut.eu, the wheel is the same
 bytes every time, and an exported page loads nothing from another origin."""
 import importlib
@@ -16,10 +16,10 @@ from estimate import models, site
 from estimate.models import example
 
 ROOT = Path(__file__).resolve().parent.parent
-NOTEBOOKS = sorted((ROOT / "estimate-site" / "notebooks").glob("*.py"))
+NOTEBOOKS = sorted((ROOT / "notebooks").glob("*.py"))
 MODELS = [importlib.import_module(f"estimate.models.{m.name}") for m in pkgutil.iter_modules(models.__path__)]
 
-spec = importlib.util.spec_from_file_location("estimate_build", ROOT / "estimate-site" / "build.py")
+spec = importlib.util.spec_from_file_location("estimate_build", ROOT / "build.py")
 build = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(build)
 
@@ -121,7 +121,9 @@ def test_the_real_bundle_is_read_when_built(tmp_path):
     pub = shutil.which("pub")
     if not pub or subprocess.run([pub, "bundle"], capture_output=True, text=True).stderr.startswith("unknown command"):
         pytest.skip("no pub with `bundle` on PATH")
-    subprocess.run([pub, "bundle", f"--dir={ROOT / 'publication-0' / 'objects'}", f"--out={tmp_path}"], check=True, capture_output=True)
+    if not (ROOT / "objects").is_dir():
+        pytest.skip("no objects/: ./fetch-publication.sh puts the pinned publication there")
+    subprocess.run([pub, "bundle", f"--dir={ROOT / 'objects'}", f"--out={tmp_path}"], check=True, capture_output=True)
     [p] = site.with_bundle(example.PARAMETERS, site.Bundle(tmp_path))
     assert p["status"] == "placeholder (not measured yet)"
 

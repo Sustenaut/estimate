@@ -1,0 +1,6 @@
+{
+  "comment": "The publication the pages take inputs from: a release of business-plan's publication.yml (publication-0-objects.tar.gz), pinned by tag and sha256. ./fetch-publication.sh reads it from storage.sustenaut.eu's publications tenant by sha256 (or the release by tag, with gh), checks it and unpacks it into objects/; moving to a newer release is a pull request changing both.",
+  "repository": "Sustenaut/business-plan",
+  "tag": "publication-0/2026-10-29.1",
+  "sha256": "5dd897789f1aca6abae975caff6f6bdd1eff1832a6b848775b92e1991df5773e"
+}

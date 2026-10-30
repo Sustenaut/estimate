@@ -1,0 +1,5 @@
+# What the site builds with and CI tests with, pinned by requirements.lock.
+marimo
+numpy
+uv  # marimo's html-wasm export runs ruff through it
+pytest
