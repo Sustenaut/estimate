@@ -5,44 +5,51 @@
       "paths": [
         "with-secrets",
         "with-secrets.json"
-      ]
+      ],
+      "mode": "required"
     },
     {
       "plugin": "github.actions-oidc",
       "paths": [
         ".github/workflows/deploy.yml",
         "fetch-publication.sh"
-      ]
+      ],
+      "mode": "required"
     },
     {
       "plugin": "github.repo-ops",
       "paths": [
         "fetch-publication.sh"
-      ]
+      ],
+      "mode": "required"
     },
     {
       "plugin": "google.cloud",
       "paths": [
         ".github/workflows/deploy.yml"
-      ]
+      ],
+      "mode": "required"
     },
     {
       "plugin": "jsdelivr.purge",
       "paths": [
         "build.py"
-      ]
+      ],
+      "mode": "required"
     },
     {
       "plugin": "npm.publish",
       "paths": [
         "build.py"
-      ]
+      ],
+      "mode": "required"
     },
     {
       "plugin": "pypi.publish",
       "paths": [
         "vendor-lock.json"
-      ]
+      ],
+      "mode": "required"
     }
   ],
   "own_hosts": [
