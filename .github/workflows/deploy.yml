@@ -1,9 +1,10 @@
 # Build and deploy the estimate site (estimate.sustenaut.eu) on each merge to
 # main. The objects are the release publication.json pins, read from
 # storage.sustenaut.eu's private publications tenant with this job's OpenID
-# Connect token. Google credentials come from Workload Identity Federation
-# (Sustenaut/shared-infra's infra/deploy.tf, var.github_repositories): no keys or
-# secrets are stored in GitHub.
+# Connect token. Google credentials come from Workload Identity Federation, as
+# this site's own deploy account (infra/main.tf), which only this repository can
+# act as and which can only deploy this site: no keys or secrets are stored in
+# GitHub.
 name: deploy
 
 on:
@@ -23,7 +24,7 @@ env:
   REGION: europe-north1
   IMAGE: europe-north1-docker.pkg.dev/sustenaut/estimate-site/estimate-site
   WIF_PROVIDER: projects/948171295184/locations/global/workloadIdentityPools/github/providers/github
-  DEPLOYER: sustenaut-deployer@sustenaut.iam.gserviceaccount.com
+  DEPLOYER: sustenaut-estimate-site-deploy@sustenaut.iam.gserviceaccount.com
 
 jobs:
   deploy:
