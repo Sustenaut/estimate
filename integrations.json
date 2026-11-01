@@ -26,7 +26,8 @@
     {
       "plugin": "google.cloud",
       "paths": [
-        ".github/workflows/deploy.yml"
+        ".github/workflows/deploy.yml",
+        "infra/**"
       ],
       "mode": "required"
     },
@@ -69,6 +70,18 @@
     {
       "path": "tests/**",
       "reason": "Fakes and test data"
+    }
+  ],
+  "terraform": [
+    {
+      "dir": "infra",
+      "plugins": [
+        "terraform.google"
+      ],
+      "runs": [
+        "laptop"
+      ],
+      "mode": "required"
     }
   ]
 }

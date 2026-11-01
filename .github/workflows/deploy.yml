@@ -2,7 +2,7 @@
 # main. The objects are the release publication.json pins, read from
 # storage.sustenaut.eu's private publications tenant with this job's OpenID
 # Connect token. Google credentials come from Workload Identity Federation
-# (business-plan's infra/notebooks.tf, var.github_repositories): no keys or
+# (Sustenaut/shared-infra's infra/deploy.tf, var.github_repositories): no keys or
 # secrets are stored in GitHub.
 name: deploy
 

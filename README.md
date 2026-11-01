@@ -83,7 +83,9 @@ asks it for the index, a page, Pyodide and the inputs, runs `browser_check.py`
 against it, and deploys on each merge to main. It needs no secret:
 storage.sustenaut.eu takes the job's OpenID Connect token, as its `publications`
 tenant names `github:Sustenaut/estimate` as a reader, and Google credentials come
-from Workload Identity Federation (this repository is in business-plan's
-`var.github_repositories`). The Cloud Run service, its image repository and the
-domain mapping are in business-plan's `infra/estimate-site.tf`, and the `estimate`
-DNS record is in its `pubkit.json` hosting block.
+from Workload Identity Federation (this repository is in Sustenaut/shared-infra's
+`var.github_repositories`). The Cloud Run service, its account and its image
+repository are in `infra/`, whose state is `gs://sustenaut-tfstate/estimate`:
+`terraform -chdir=infra init`, then `./with-secrets terraform -chdir=infra plan` and
+`apply`, with a `.env` holding `BWS_ACCESS_TOKEN`. Who may open the site, its domain
+mapping and the `estimate` DNS record are in Sustenaut/shared-infra.
