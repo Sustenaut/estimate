@@ -5,8 +5,8 @@
 # it runs as an account with no roles. .github/workflows/deploy.yml builds and
 # deploys it on each merge to main.
 #
-# Who may open the site, its domain and its DNS, and the shared account it deploys
-# as, are Sustenaut/shared-infra's. This stack does not read that state.
+# Who may open the site, its domain and its DNS are Sustenaut/shared-infra's. This
+# stack does not read that state.
 
 locals {
   gcp            = jsondecode(file("${path.module}/../pubkit.json")).hosting.providers["google-cloud"]
@@ -25,4 +25,7 @@ module "site" {
   account_display_name = "Sustenaut estimate-site"
   account_description  = "Estimate site (static pages on Cloud Run): no access to anything; it serves files baked into its image."
   registry_description = "Images of the estimate site."
+
+  # An account only this repository can act as, which can only deploy this site.
+  deploy_repository = "Sustenaut/estimate"
 }
