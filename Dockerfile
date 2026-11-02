@@ -36,3 +36,4 @@ RUN python build.py site --out /site --pub /usr/local/bin/pub --commit "${GIT_CO
 
 FROM scratch
 COPY --from=site /site /site
+USER 65532
