@@ -5,3 +5,7 @@ build/
 .pytest_cache/
 objects/
 .env
+site/
+.wrangler/
+.dev.vars
+node_modules/

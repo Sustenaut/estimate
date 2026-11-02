@@ -38,7 +38,7 @@ jobs:
     needs: [tested]
     if: ${{ needs.tested.outputs.tested != 'true' }}
     uses: Sustenaut/pubkit/.github/workflows/job-service-tests.yml@7914b2abb933747e303f5f981d8335d3704dcdb3 # v0.21.0
-    with: {"setup": "python -m venv .venv && .venv/bin/pip install --quiet -r requirements.lock", "test": "PATH=$PWD/.venv/bin:$PATH .venv/bin/python -m pytest -q"}
+    with: {"setup": "python -m venv .venv && .venv/bin/pip install --quiet -r requirements.lock", "test": "PATH=$PWD/.venv/bin:$PATH .venv/bin/python -m pytest -q && node --test worker/headers.test.js"}
 
   # The one check a ruleset requires: it passes only when every job
   # above succeeded or, where the merge queue already passed the

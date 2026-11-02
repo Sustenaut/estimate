@@ -4,6 +4,4 @@
 !objects/
 !build.py
 !vendor-lock.json
-!nginx.conf
-!headers.conf
 !requirements.lock
