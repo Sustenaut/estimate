@@ -97,10 +97,9 @@ is refused at their next request. `worker/index.js` says which role, and `worker
 Fetching the publication needs no secret: storage.sustenaut.eu takes the job's OpenID Connect token, as its `publications`
 tenant names `github:Sustenaut/estimate` as a reader.
 
-### Moving estimate.sustenaut.eu here
+### Setting the site up
 
-Merging moves no traffic: the deploy is skipped until the variable is set, and estimate.sustenaut.eu stays on Cloud Run behind IAP,
-on its last image, until step 1. It is down between steps 1 and 4, which is fine while nobody else uses it.
+This is done. These are the steps to make it again, or to replace its secrets.
 
 Set up, once, a clone of this repository beside `auth`, with the Bitwarden token (`.env` is ignored here):
 
@@ -110,8 +109,8 @@ cp ~/git/auth/.env ~/git/estimate/.env
 git -C ~/git/auth pull --ff-only origin main
 ```
 
-1. **The project and the address**, in `~/git/shared-infra`. In its `pubkit.json`, change the `estimate` line under `sites` to
-   `"estimate": { "provider": "cloudflare", "kind": "pages", "project": "sustenaut-estimate", "ttl": 300 },`, merge that, pull it, and apply:
+1. **The project and the address**, in `~/git/shared-infra`. In its `pubkit.json`, the `estimate` line under `sites` is
+   `"estimate": { "provider": "cloudflare", "kind": "pages", "project": "sustenaut-estimate", "ttl": 300 },`, and to apply it:
 
    ```sh
    cd ~/git/shared-infra
@@ -140,9 +139,3 @@ git -C ~/git/auth pull --ff-only origin main
    ```sh
    gh workflow run deploy --repo Sustenaut/estimate
    ```
-5. Remove who may open the site through IAP and the domain mapping from Sustenaut/shared-infra's `infra/estimate-site.tf`, and the Cloud Run service, its accounts and its image repository from this repository's `infra/`.
-
-Until then `infra/` still holds that Cloud Run service, and with no more deploys it stays on its last image. Its state is
-`gs://sustenaut-tfstate/estimate`: `terraform -chdir=infra init`, then `./with-secrets terraform -chdir=infra plan` and `apply`,
-with a `.env` holding `BWS_ACCESS_TOKEN`.
-
