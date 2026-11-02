@@ -59,7 +59,7 @@ jobs:
           echo $! > /tmp/wrangler.pid
           for i in $(seq 1 60); do curl -fs -o /dev/null localhost:8080/ && break; sleep 1; done
           curl -fs localhost:8080/ | grep -q 'Sustenaut estimates'
-          curl -fs localhost:8080/example/app.html | grep -q 'data-pyodide-index-url="../vendor/pyodide/'
+          curl -fs localhost:8080/example/app | grep -q 'data-pyodide-index-url="../vendor/pyodide/'
           curl -fsI localhost:8080/vendor/pyodide/v314.0.0/pyodide.asm.wasm | grep -qi 'content-type: application/wasm'
           curl -fsI localhost:8080/vendor/pyodide/v314.0.0/pyodide.asm.mjs | grep -qi 'content-type: text/javascript'
           curl -fs localhost:8080/example/public/build.json | grep -q "${GITHUB_SHA}"
