@@ -1,10 +1,9 @@
-# Build and deploy the estimate site (estimate.sustenaut.eu) on each merge to
-# main. The objects are the release publication.json pins, read from
-# storage.sustenaut.eu's private publications tenant with this job's OpenID
-# Connect token. Google credentials come from Workload Identity Federation, as
-# this site's own deploy account (infra/main.tf), which only this repository can
-# act as and which can only deploy this site: no keys or secrets are stored in
-# GitHub.
+# Build the estimate site and deploy it to Cloudflare Pages, with the team sign-in in front as its
+# _worker.js, on each merge to main. The objects are the release publication.json pins, read from
+# storage.sustenaut.eu's private publications tenant with this job's OpenID Connect token.
+# Cloudflare's token is the secret CLOUDFLARE_GITHUB_API_TOKEN (Pages: Edit), as for maps, and the account
+# the variable CLOUDFLARE_ACCOUNT_ID; the deploy step stays off until the variable is set. The Pages project
+# is the estimate site in Sustenaut/shared-infra's pubkit.json.
 name: deploy
 
 on:
@@ -21,10 +20,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  REGION: europe-north1
-  IMAGE: europe-north1-docker.pkg.dev/sustenaut/estimate-site/estimate-site
-  WIF_PROVIDER: projects/948171295184/locations/global/workloadIdentityPools/github/providers/github
-  DEPLOYER: sustenaut-estimate-site-deploy@sustenaut.iam.gserviceaccount.com
+  IMAGE: estimate-site
 
 jobs:
   deploy:
@@ -35,32 +31,40 @@ jobs:
       - name: Fetch the publication
         run: ./fetch-publication.sh
 
-      - uses: google-github-actions/auth@v3
-        with:
-          workload_identity_provider: ${{ env.WIF_PROVIDER }}
-          service_account: ${{ env.DEPLOYER }}
-
-      - uses: google-github-actions/setup-gcloud@v3
-
       # pub is built from publet; Pyodide and the wheels are fetched and
       # checked against vendor-lock.json inside the build.
-      - name: Build the image
-        run: |
-          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
-          docker build --build-arg GIT_COMMIT="${GITHUB_SHA}" -t "${IMAGE}:${GITHUB_SHA}" .
+      - name: Build the pages
+        run: docker build --build-arg GIT_COMMIT="${GITHUB_SHA}" -t "${IMAGE}:${GITHUB_SHA}" .
 
-      # Ask the image for the index, a model page, Pyodide and a model's
-      # inputs, so a site that builds wrong fails here instead of online.
-      - name: Start the image
+      - name: Take the pages out of the image
         run: |
-          docker run -d --name site -p 8080:8080 "${IMAGE}:${GITHUB_SHA}"
-          for i in $(seq 1 30); do curl -fs localhost:8080/healthz && break; sleep 1; done
+          id=$(docker create "${IMAGE}:${GITHUB_SHA}" none)
+          docker cp "${id}:/site" site
+          docker rm "$id"
+          count=$(find site -type f | wc -l)
+          largest=$(find site -type f -printf '%s\n' | sort -n | tail -1)
+          echo "$count files, largest $largest bytes"
+          # What Cloudflare's free plan takes: 20,000 files, of 25 MiB at most.
+          test "$count" -le 20000
+          test "$largest" -le 26214400
+
+      # Ask for the index, a model page, Pyodide and a model's inputs, so a site that
+      # builds wrong fails here instead of online. This is the files with their headers,
+      # before the gate joins them, so it needs no sign-in; the sign-in is Sustenaut/auth's to prove.
+      - name: Check the pages
+        run: |
+          npm ci --ignore-scripts
+          npx --no-install esbuild worker/preview.js --bundle --format=esm --outfile=site/_worker.js
+          npx --no-install wrangler pages dev site --ip 127.0.0.1 --port 8080 --show-interactive-dev-session=false >/tmp/wrangler.log 2>&1 &
+          echo $! > /tmp/wrangler.pid
+          for i in $(seq 1 60); do curl -fs -o /dev/null localhost:8080/ && break; sleep 1; done
           curl -fs localhost:8080/ | grep -q 'Sustenaut estimates'
           curl -fs localhost:8080/example/ | grep -q 'data-pyodide-index-url="../vendor/pyodide/'
           curl -fsI localhost:8080/vendor/pyodide/v314.0.0/pyodide.asm.wasm | grep -qi 'content-type: application/wasm'
           curl -fsI localhost:8080/vendor/pyodide/v314.0.0/pyodide.asm.mjs | grep -qi 'content-type: text/javascript'
           curl -fs localhost:8080/example/public/build.json | grep -q "${GITHUB_SHA}"
           curl -fs localhost:8080/example/public/bundle/index.json | grep -q '"bundle"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8080/nothing-here)" = 404
 
       # Open each page in headless Chromium: it must load nothing from any
       # other origin and compute what the models compute natively.
@@ -70,10 +74,17 @@ jobs:
           .venv/bin/pip install --quiet "$(grep -E '^numpy==' requirements.lock)" playwright==1.64.0
           .venv/bin/playwright install --with-deps --only-shell chromium
           .venv/bin/python browser_check.py --url http://localhost:8080
-          docker rm -f site
+          kill "$(cat /tmp/wrangler.pid)"
 
-      - name: Push the image
-        run: docker push "${IMAGE}:${GITHUB_SHA}"
+      - name: Put the gate in front
+        run: |
+          npx --no-install esbuild worker/index.js --bundle --format=esm --outfile=site/_worker.js
 
+      # With the locked wrangler, not pubkit's deploy-static: that brings a public-site check on
+      # each pull request, for pages link previews can read, and these sit behind a sign-in.
       - name: Deploy
-        run: gcloud run deploy estimate-site --image "${IMAGE}:${GITHUB_SHA}" --region "${REGION}" --quiet
+        if: vars.CLOUDFLARE_ACCOUNT_ID != ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_GITHUB_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --no-install wrangler pages deploy site --project-name sustenaut-estimate --branch main --commit-hash "$GITHUB_SHA"

@@ -328,6 +328,8 @@ def site(out: Path, cache: Path, pub: str | None, bundle: Path | None, commit: s
             commit=html.escape(commit[:12]), marimo=MARIMO_VERSION, pyodide=PYODIDE_VERSION,
         )
     )
+    # Without this file Cloudflare Pages answers a missing address with the index and a 200.
+    (out / "404.html").write_text("<!doctype html><title>Not found</title><p>Nothing here. <a href=\"/\">The estimates</a>\n")
     (out / "build.json").write_text(json.dumps(build, indent=1) + "\n")
     shutil.rmtree(work)
     size = sum(p.stat().st_size for p in out.rglob("*") if p.is_file())

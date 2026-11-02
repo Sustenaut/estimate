@@ -2,14 +2,14 @@
 
 The models in `estimate/` as pages at
 [estimate.sustenaut.eu](https://estimate.sustenaut.eu), behind the same
-Google login (IAP) as pub.sustenaut.eu. Team only until the shared wallet
+team sign-in as pub.sustenaut.eu. Team only until the shared wallet
 sign-in exists; later, expert panels keyed to PDC concept codes get in.
 
 Each page is a marimo notebook from `notebooks/`, exported to WebAssembly.
 It runs its model in the reader's browser with Pyodide, so the server only
 serves files. Every file a page loads comes from this site: Pyodide, the
 Python wheels (marimo's runtime, micropip, numpy, ...), MathJax and the
-icons are in `/vendor/`, and the Content-Security-Policy (`headers.conf`)
+icons are in `/vendor/`, and the Content-Security-Policy (`headers.json`)
 stops the browser from fetching anything elsewhere.
 
 ## A model and its page
@@ -78,14 +78,62 @@ The objects change in business-plan. Its `publication` workflow releases them as
 
 ## Deploying
 
-`.github/workflows/deploy.yml` fetches the pinned publication, builds the image,
-asks it for the index, a page, Pyodide and the inputs, runs `browser_check.py`
-against it, and deploys on each merge to main. It needs no secret:
-storage.sustenaut.eu takes the job's OpenID Connect token, as its `publications`
-tenant names `github:Sustenaut/estimate` as a reader, and Google credentials come
-from Workload Identity Federation (this repository is in Sustenaut/shared-infra's
-`var.github_repositories`). The Cloud Run service, its account and its image
-repository are in `infra/`, whose state is `gs://sustenaut-tfstate/estimate`:
-`terraform -chdir=infra init`, then `./with-secrets terraform -chdir=infra plan` and
-`apply`, with a `.env` holding `BWS_ACCESS_TOKEN`. Who may open the site, its domain
-mapping and the `estimate` DNS record are in Sustenaut/shared-infra.
+`.github/workflows/deploy.yml` fetches the pinned publication, builds, asks the pages for the index, a page, Pyodide and
+the inputs under wrangler, runs `browser_check.py` against them, and deploys on each merge to main, to Cloudflare Pages
+like pub, with the team sign-in in front as the project's `_worker.js`: every request passes through it. `worker/gate.js`
+is a copy of Sustenaut/auth's `edge-gate/gate.js` (its README, "A Worker gate for static sites"): the code flow with the
+team realm, an encrypted session cookie, and on each request the access check, so someone who loses the role `estimate`
+is refused at their next request. `worker/index.js` says which role, and `worker/headers.js` the headers every file carries.
+
+Fetching the publication needs no secret: storage.sustenaut.eu takes the job's OpenID Connect token, as its `publications`
+tenant names `github:Sustenaut/estimate` as a reader.
+
+### Moving estimate.sustenaut.eu here
+
+Merging moves no traffic: the deploy is skipped until the variable is set, and estimate.sustenaut.eu stays on Cloud Run behind IAP,
+on its last image, until step 1. It is down between steps 1 and 4, which is fine while nobody else uses it.
+
+Set up, once, a clone of this repository beside `auth`, with the Bitwarden token (`.env` is ignored here):
+
+```sh
+gh repo clone Sustenaut/estimate ~/git/estimate
+cp ~/git/auth/.env ~/git/estimate/.env
+git -C ~/git/auth pull --ff-only origin main
+```
+
+1. **The project and the address**, in `~/git/shared-infra`. In its `pubkit.json`, change the `estimate` line under `sites` to
+   `"estimate": { "provider": "cloudflare", "kind": "pages", "project": "sustenaut-estimate", "ttl": 300 },`, merge that, pull it, and apply:
+
+   ```sh
+   cd ~/git/shared-infra
+   ./with-secrets terraform -chdir=infra apply
+   ```
+
+   That makes the Pages project, its custom domain and the plain CNAME to `sustenaut-estimate.pages.dev` in both signers, as for pub.
+2. **The token**, in `~/git/estimate`: the Pages: Edit token maps uses (`CLOUDFLARE_GITHUB_API_TOKEN`, and `CLOUDFLARE_ACCOUNT_ID`, in Bitwarden). Each answers "for Sustenaut/estimate":
+
+   ```sh
+   cd ~/git/estimate
+   ./with-secrets bash -c 'printf %s "$CLOUDFLARE_GITHUB_API_TOKEN" | gh secret set CLOUDFLARE_GITHUB_API_TOKEN --repo Sustenaut/estimate'
+   ./with-secrets bash -c 'gh variable set CLOUDFLARE_ACCOUNT_ID --repo Sustenaut/estimate --body "$CLOUDFLARE_ACCOUNT_ID"'
+   ```
+3. **Sign-in and secrets**, in `~/git/estimate`, signed in to Sustenaut's tailnet (`tailscale switch sustenaut-admin.github`). No new DNS approval: sustenaut.eu's client is already approved.
+
+   ```sh
+   cd ~/git/estimate
+   npm ci --ignore-scripts
+   ./with-secrets ./register-client.sh
+   ```
+
+   Tick `estimate` for whoever should read it, at <https://auth.sustenaut.eu/realms/team/access>.
+4. **The deploy**, from any folder. Then sign in at estimate.sustenaut.eu.
+
+   ```sh
+   gh workflow run deploy --repo Sustenaut/estimate
+   ```
+5. Remove who may open the site through IAP and the domain mapping from Sustenaut/shared-infra's `infra/estimate-site.tf`, and the Cloud Run service, its accounts and its image repository from this repository's `infra/`.
+
+Until then `infra/` still holds that Cloud Run service, and with no more deploys it stays on its last image. Its state is
+`gs://sustenaut-tfstate/estimate`: `terraform -chdir=infra init`, then `./with-secrets terraform -chdir=infra plan` and `apply`,
+with a `.env` holding `BWS_ACCESS_TOKEN`.
+

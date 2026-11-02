@@ -10,7 +10,7 @@
     python browser_check.py build/estimate-site      # serves it
     python browser_check.py --url http://localhost:8080
 
-Serving a folder, it sends the same headers as nginx (headers.conf),
+Serving a folder, it sends the same headers as the site (headers.json),
 Content-Security-Policy included. Needs `pip install playwright` and a
 Chromium: Playwright's own, or the one in PLAYWRIGHT_CHROMIUM.
 """
@@ -35,16 +35,15 @@ ROOT = HERE
 TIMEOUT_MS = 180_000
 
 
-def nginx_headers() -> dict[str, str]:
-    text = (HERE / "headers.conf").read_text()
-    return {name: value.strip('"') for name, value in re.findall(r'^add_header (\S+) (".*?"|\S+) always;', text, re.M)}
+def site_headers() -> dict[str, str]:
+    return json.loads((HERE / "headers.json").read_text())
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map, ".mjs": "text/javascript", ".wasm": "application/wasm"}
 
     def end_headers(self):
-        for name, value in nginx_headers().items():
+        for name, value in site_headers().items():
             self.send_header(name, value)
         super().end_headers()
 

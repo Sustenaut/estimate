@@ -24,9 +24,18 @@
       "mode": "required"
     },
     {
-      "plugin": "google.cloud",
+      "plugin": "cloudflare.dns",
       "paths": [
-        ".github/workflows/deploy.yml"
+        ".github/workflows/deploy.yml",
+        "register-client.sh"
+      ],
+      "mode": "required"
+    },
+    {
+      "plugin": "cloudflare.pages",
+      "paths": [
+        ".github/workflows/deploy.yml",
+        "register-client.sh"
       ],
       "mode": "required"
     },

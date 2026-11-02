@@ -1,0 +1,13 @@
+# estimate.sustenaut.eu on Cloudflare Pages: the built pages (site/, from the image, .github/workflows/deploy.yml),
+# with the team sign-in in front as site/_worker.js (worker/). In that form every request goes through it,
+# so nothing is served without passing the gate. CLIENT_SECRET and SESSION_KEY are the project's secrets, set by
+# register-client.sh; without them it serves nothing.
+#
+# The project and its address are Sustenaut/shared-infra's (pubkit.json's sites, kind pages), like maps and pub.
+name = "sustenaut-estimate"
+pages_build_output_dir = "./site"
+compatibility_date = "2026-10-01"
+
+[vars]
+REALM_URL = "https://auth.sustenaut.eu/realms/team"
+CLIENT_ID = "sustenaut.eu"

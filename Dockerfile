@@ -4,7 +4,8 @@
 # Build from the repo root, after ./fetch-publication.sh has put the pinned
 # publication's objects in objects/:
 #   podman build --build-arg GIT_COMMIT=$(git rev-parse HEAD) -t estimate-site .
-# Cloud Run supplies PORT=8080; IAP in front of the service handles the login.
+# Nothing runs from this image: .github/workflows/deploy.yml takes /site out of it
+# for Cloudflare Pages.
 
 # pub writes publication 0's reading data, which the pages take inputs from.
 # Pinned by commit, as in Sustenaut/pub-site's Dockerfile; move both together.
@@ -33,8 +34,5 @@ ARG GIT_COMMIT=unknown
 # Downloads Pyodide and the wheels and checks each against vendor-lock.json.
 RUN python build.py site --out /site --pub /usr/local/bin/pub --commit "${GIT_COMMIT}" --cache /tmp/cache
 
-FROM docker.io/nginxinc/nginx-unprivileged:stable-alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY headers.conf /etc/nginx/estimate-headers.conf
-COPY --from=site /site /usr/share/nginx/html
-EXPOSE 8080
+FROM scratch
+COPY --from=site /site /site
