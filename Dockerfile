@@ -27,7 +27,8 @@ RUN pip install --no-cache-dir $(grep -E '^(marimo|numpy|uv)==' /tmp/requirement
 COPY --from=pub /publet/target/release/pub /usr/local/bin/pub
 WORKDIR /repo
 COPY estimate estimate
-COPY build.py vendor-lock.json ./
+COPY build.py vendor-lock.json headers.json ./
+COPY bundle bundle
 COPY notebooks notebooks
 COPY objects objects
 ARG GIT_COMMIT=unknown

@@ -2,6 +2,7 @@
 (): the notebooks run natively, inputs come from a publication
 bundle when it has them, links match pub.sustenaut.eu, the wheel is the same
 bytes every time, and an exported page loads nothing from another origin."""
+import gzip
 import importlib
 import importlib.util
 import json
@@ -185,6 +186,21 @@ def test_marimo_matches_the_pins():
     assert marimo.__version__ == build.MARIMO_VERSION
     lock = (ROOT / "requirements.lock").read_text()
     assert f"marimo=={build.MARIMO_VERSION}" in lock
+
+
+def test_a_bundle_holds_each_file_where_its_index_says(tmp_path):
+    files = {"/vendor/a.whl": tmp_path / "a", "/example/public/o/pub:x.json": tmp_path / "b"}
+    files["/vendor/a.whl"].write_bytes(b"first")
+    files["/example/public/o/pub:x.json"].write_bytes(b"second file")
+    bundle = build.pack(files)
+    packed = gzip.decompress(bundle)
+    length = int.from_bytes(packed[:4], "little")
+    index = json.loads(packed[4:4 + length])
+    start = 4 + length
+    for path, source in files.items():
+        offset, size = index[path]
+        assert packed[start + offset:start + offset + size] == source.read_bytes()
+    assert build.pack(files) == bundle  # the same bytes, so the same hash in its name
 
 
 def test_exported_page_loads_only_from_this_site(tmp_path):

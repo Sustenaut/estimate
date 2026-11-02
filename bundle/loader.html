@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loading the model</title>
+<link rel="icon" href="data:,">
+<p>Loading the model and its Python runtime: about __SIZE__ MB the first time, then almost nothing.</p>
+<noscript><p>This page needs JavaScript: the model runs in your browser.</p></noscript>
+<script>
+  // Fetches the bundles once, through the service worker, then shows the model. Where that can't work, the page and its
+  // files are also here one by one, in app.html. The worker asks the site on each visit, so the sign-in still decides.
+  const plain = () => location.replace("app.html");
+  let tries = 0;
+  try {
+    tries = Number(sessionStorage.getItem("estimate-tries") || 0);
+    sessionStorage.setItem("estimate-tries", tries + 1);
+  } catch {}
+  if (tries > 1 || !("serviceWorker" in navigator)) {
+    plain();
+  } else {
+    navigator.serviceWorker.addEventListener("controllerchange", () => location.reload());
+    navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "all" }).then((registration) => {
+      if (navigator.serviceWorker.controller) return location.reload();
+      const worker = registration.installing || registration.waiting;
+      if (worker) worker.addEventListener("statechange", () => { if (worker.state === "redundant") plain(); });
+    }).catch(plain);
+  }
+</script>
+</html>

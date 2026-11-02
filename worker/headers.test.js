@@ -15,6 +15,10 @@ test("Pyodide's loader is JavaScript and its core WebAssembly, and what's pinned
   assert.equal(headersFor("/vendor/pyodide/v314.0.0/pyodide.asm.mjs")["Content-Type"], "text/javascript");
   assert.equal(headersFor("/vendor/pyodide/v314.0.0/pyodide.asm.wasm")["Content-Type"], "application/wasm");
   assert.match(headersFor("/vendor/pyodide/v314.0.0/numpy.whl")["Cache-Control"], /^private, .*immutable/);
+  assert.match(headersFor("/example/assets/index-CgQsZfww.js")["Cache-Control"], /immutable/);
+  assert.match(headersFor("/bundles/runtime-abc.gz")["Cache-Control"], /immutable/);
+  assert.equal(headersFor("/sw.js")["Cache-Control"], "private, max-age=3600");
+  assert.equal(headersFor("/example/public/build.json")["Cache-Control"], undefined);
   assert.equal(headersFor("/example/")["Cache-Control"], undefined);
   assert.equal(headersFor("/example/")["Content-Type"], undefined);
 });

@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import gzip
 import hashlib
 import html
 import importlib
@@ -45,6 +46,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE
 LOCK = HERE / "vendor-lock.json"
+BUNDLE = HERE / "bundle"
 NOTEBOOKS = HERE / "notebooks"
 
 ESTIMATE_VERSION = "0.1.0"
@@ -238,6 +240,62 @@ def export(notebook: Path, out: Path, pins: dict) -> None:
             asset.write_text(patched)
 
 
+def pack(paths: dict[str, Path]) -> bytes:
+    """A bundle (bundle/sw.js unpacks it): gzip of a 4-byte length, a JSON index, and the files."""
+    index, parts, at = {}, [], 0
+    for name, path in sorted(paths.items()):
+        data = path.read_bytes()
+        index[name] = [at, len(data)]
+        parts.append(data)
+        at += len(data)
+    head = json.dumps(index).encode()
+    return gzip.compress(len(head).to_bytes(4, "little") + head + b"".join(parts), compresslevel=9, mtime=0)
+
+
+def bundles(out: Path, models: list[str], headers: dict) -> None:
+    """Writes the runtime's bundle and one per model, the service worker naming them, and each model's loader.
+
+    The files stay in the site one by one too: lazily loaded ones, and the whole page where a service worker can't run.
+    """
+    lock = json.loads((BUNDLE / "runtime-lock.json").read_text())
+    if (lock["marimo"], lock["pyodide"]) != (MARIMO_VERSION, PYODIDE_VERSION):
+        raise SystemExit("bundle/runtime-lock.json is for other versions: run browser_check.py --write-lock")
+    first = models[0]
+    runtime: dict[str, Path] = {}
+    for name in lock["runtime"]:
+        path = out / name if name.startswith("vendor/") else out / first / name
+        if not path.is_file():
+            raise SystemExit(f"{name}: in bundle/runtime-lock.json, not in the site: run browser_check.py --write-lock")
+        runtime[f"/{name}"] = path
+        if not name.startswith("vendor/"):
+            for model in models[1:]:
+                if (out / model / name).read_bytes() != path.read_bytes():
+                    raise SystemExit(f"{name}: differs between {first} and {model}, which share it")
+    written = {}
+    def write(stem: str, data: bytes) -> str:
+        name = f"/bundles/{stem}-{hashlib.sha256(data).hexdigest()[:16]}.gz"
+        (out / name.lstrip("/")).parent.mkdir(exist_ok=True)
+        (out / name.lstrip("/")).write_bytes(data)
+        written[stem] = len(data)
+        return name
+    runtime_url = write("runtime", pack(runtime))
+    urls = {}
+    for model in models:
+        root = out / model
+        files = {f"/{model}/public/{p.relative_to(root / 'public').as_posix()}": p for p in (root / "public").rglob("*") if p.is_file()}
+        files[f"/{model}/app.html"] = root / "app.html"
+        for extra in ("favicon.ico", "manifest.json", "site.webmanifest"):
+            files[f"/{model}/{extra}"] = root / extra
+        urls[model] = write(model, pack(files))
+    manifest = {"version": hashlib.sha256(json.dumps([runtime_url, urls]).encode()).hexdigest()[:16], "runtime": runtime_url, "models": urls, "headers": headers}
+    (out / "sw.js").write_text((BUNDLE / "sw.js").read_text().replace("__MANIFEST__", json.dumps(manifest)))
+    loader = (BUNDLE / "loader.html").read_text()
+    for model in models:
+        size = (written["runtime"] + written[model]) / 1e6
+        (out / model / "index.html").write_text(loader.replace("__SIZE__", f"{size:.0f}"))
+    print("bundles:", ", ".join(f"{stem} {size / 1e6:.2f} MB" for stem, size in written.items()))
+
+
 def model_info(stem: str) -> dict:
     sys.path.insert(0, str(ROOT))
     try:
@@ -312,6 +370,7 @@ def site(out: Path, cache: Path, pub: str | None, bundle: Path | None, commit: s
     for notebook in sorted(NOTEBOOKS.glob("*.py")):
         page = out / notebook.stem
         export(notebook, page, pins)
+        (page / "index.html").rename(page / "app.html")
         public = page / "public"
         public.mkdir(exist_ok=True)
         shutil.copy2(whl, public / whl.name)
@@ -328,6 +387,7 @@ def site(out: Path, cache: Path, pub: str | None, bundle: Path | None, commit: s
             commit=html.escape(commit[:12]), marimo=MARIMO_VERSION, pyodide=PYODIDE_VERSION,
         )
     )
+    bundles(out, sorted(p.stem for p in NOTEBOOKS.glob("*.py")), json.loads((HERE / "headers.json").read_text()))
     # Without this file Cloudflare Pages answers a missing address with the index and a 200.
     (out / "404.html").write_text("<!doctype html><title>Not found</title><p>Nothing here. <a href=\"/\">The estimates</a>\n")
     (out / "build.json").write_text(json.dumps(build, indent=1) + "\n")
