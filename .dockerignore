@@ -3,5 +3,7 @@
 !notebooks/
 !objects/
 !build.py
+!bundle/
+!headers.json
 !vendor-lock.json
 !requirements.lock

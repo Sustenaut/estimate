@@ -12,6 +12,12 @@ Python wheels (marimo's runtime, micropip, numpy, ...), MathJax and the
 icons are in `/vendor/`, and the Content-Security-Policy (`headers.json`)
 stops the browser from fetching anything elsewhere.
 
+A first visit to a model loads a few files and not hundreds: a page, a service worker, one bundle for the
+runtime that all models share, and one for the model (`bundle/`, written by `build.py`). The worker unpacks them
+and answers from them. Each visit to a page still asks the site, so the sign-in decides who gets a page as before.
+The files stay in the site one by one too: what isn't bundled is fetched when asked for, and where a service worker
+can't run the page is at `<model>/app.html`.
+
 ## A model and its page
 
 A model is a module in `estimate/models/` (standard library and numpy only)
@@ -68,7 +74,10 @@ The versions are pinned together: `MARIMO_VERSION` and `PYODIDE_VERSION` in
 `.venv/bin/python build.py lock`, which takes marimo's own
 Pyodide lockfile for that pair, keeps the packages the pages load and their
 dependencies (`PACKAGES`), and records each file's sha256. If a page then
-loads something not pinned, `browser_check.py` shows the 404.
+loads something not pinned, `browser_check.py` shows the 404. Then build, run
+`.venv/bin/python browser_check.py build/estimate-site --write-lock`, which records what a page loads as the
+runtime's bundle (`bundle/runtime-lock.json`), and build again. If a page loads something
+outside the bundles, `browser_check.py` names it.
 
 ## Updating the objects
 

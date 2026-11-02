@@ -1,13 +1,16 @@
 // The headers every page carries: headers.json, which browser_check.py sends too. What's in /vendor/ is pinned by
-// version in its path, so it is kept for good; Pyodide's loader must be JavaScript and its core WebAssembly.
+// version in its path, and a model's /assets/ and /bundles/ by hash in the name, so they are kept for good;
+// Pyodide's loader must be JavaScript and its core WebAssembly.
 import policy from "../headers.json" with { type: "json" };
 
 const KEEP = "private, max-age=31536000, immutable";
 
 /** The headers of a served file. */
 export function headersFor(pathname) {
+  // Browsers look for a new service worker on each visit: this makes that once an hour.
+  if (pathname === "/sw.js") return { ...policy, "Cache-Control": "private, max-age=3600" };
   if (pathname.endsWith(".mjs")) return { ...policy, "Content-Type": "text/javascript", "Cache-Control": KEEP };
-  if (pathname.startsWith("/vendor/")) {
+  if (pathname.startsWith("/vendor/") || pathname.startsWith("/bundles/") || /^\/[^/]+\/assets\//.test(pathname)) {
     return { ...policy, "Cache-Control": KEEP, ...(pathname.endsWith(".wasm") ? { "Content-Type": "application/wasm" } : {}) };
   }
   return policy;
