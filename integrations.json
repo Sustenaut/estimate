@@ -3,23 +3,7 @@
     {
       "plugin": "bitwarden.secrets",
       "paths": [
-        "with-secrets",
         "with-secrets.json"
-      ],
-      "mode": "required"
-    },
-    {
-      "plugin": "github.actions-oidc",
-      "paths": [
-        ".github/workflows/deploy.yml",
-        "fetch-publication.sh"
-      ],
-      "mode": "required"
-    },
-    {
-      "plugin": "github.repo-ops",
-      "paths": [
-        "fetch-publication.sh"
       ],
       "mode": "required"
     },
@@ -36,6 +20,21 @@
       "paths": [
         ".github/workflows/deploy.yml",
         "register-client.sh"
+      ],
+      "mode": "required"
+    },
+    {
+      "plugin": "github.actions-oidc",
+      "paths": [
+        ".github/workflows/deploy.yml",
+        "fetch-publication.sh"
+      ],
+      "mode": "required"
+    },
+    {
+      "plugin": "github.repo-ops",
+      "paths": [
+        "fetch-publication.sh"
       ],
       "mode": "required"
     },
@@ -57,6 +56,14 @@
       "plugin": "pypi.publish",
       "paths": [
         "vendor-lock.json"
+      ],
+      "mode": "required"
+    },
+    {
+      "plugin": "sonarcloud.scan",
+      "paths": [
+        ".github/workflows/main.yml",
+        ".github/workflows/pr.yml"
       ],
       "mode": "required"
     }
