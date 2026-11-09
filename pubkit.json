@@ -13,5 +13,10 @@
       "integrations / scan"
     ],
     "tags": false
+  },
+  "mirror": {
+    "wheels": "https://storage.sustenaut.eu/wheels",
+    "terraform": "https://storage.sustenaut.eu/terraform",
+    "pypi": "https://storage.sustenaut.eu/pypi"
   }
 }
