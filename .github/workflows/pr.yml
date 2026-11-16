@@ -32,7 +32,7 @@ jobs:
     needs: [tested]
     if: ${{ needs.tested.outputs.tested != 'true' }}
     uses: Sustenaut/pubkit/.github/workflows/job-service-tests.yml@c502c3d3969ac75ec9a411c284e49f01c5a93558 # v0.37.0
-    with: {"setup": "python -m venv .venv && .venv/bin/pip install --quiet -r requirements.lock", "test": "PATH=$PWD/.venv/bin:$PATH .venv/bin/python -m pytest -q && node --test worker/headers.test.js"}
+    with: {"setup": "python -m venv .venv && .venv/bin/pip install --quiet -r requirements.lock && npm ci --ignore-scripts", "test": "PATH=$PWD/.venv/bin:$PATH .venv/bin/python -m pytest -q && npx --no-install cucumber-js"}
 
   sonar:
     name: ci
