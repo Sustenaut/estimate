@@ -1,6 +1,7 @@
 {
   "private": true,
   "devDependencies": {
+    "@cucumber/cucumber": "13.3.0",
     "esbuild": "0.28.2",
     "wrangler": "4.156.0"
   }

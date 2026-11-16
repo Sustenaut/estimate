@@ -3,3 +3,4 @@ marimo
 numpy
 uv  # marimo's html-wasm export runs ruff through it
 pytest
+pytest-bdd==8.1.0  # the scenarios in tests/; the version pubkit pins for every suite
