@@ -6,7 +6,7 @@
 # Then it puts the client's secret into the project (it goes through this run's pipes, never on a command
 # line or disk here), and a random session key if the project has none.
 #
-# Run it from the repository root, signed in to Sustenaut's tailnet, once the Pages project exists (Sustenaut/shared-infra's pubkit.json):
+# Run it from the repository root, signed in to Sustenaut's tailnet, once the Pages project exists (Sustenaut/shared-infra's pubrules.json):
 #
 #   ./with-secrets ./register-client.sh
 #

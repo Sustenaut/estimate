@@ -109,7 +109,7 @@ cp ~/git/auth/.env ~/git/estimate/.env
 git -C ~/git/auth pull --ff-only origin main
 ```
 
-1. **The project and the address**, in `~/git/shared-infra`. In its `pubkit.json`, the `estimate` line under `sites` is
+1. **The project and the address**, in `~/git/shared-infra`. In its `pubrules.json`, the `estimate` line under `sites` is
    `"estimate": { "provider": "cloudflare", "kind": "pages", "project": "sustenaut-estimate", "ttl": 300 },`, and to apply it:
 
    ```sh

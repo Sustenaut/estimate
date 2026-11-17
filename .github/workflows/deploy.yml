@@ -3,7 +3,7 @@
 # storage.sustenaut.eu's private publications tenant with this job's OpenID Connect token.
 # Cloudflare's token is the secret CLOUDFLARE_GITHUB_API_TOKEN (Pages: Edit), as for maps, and the account
 # the variable CLOUDFLARE_ACCOUNT_ID; the deploy step stays off until the variable is set. The Pages project
-# is the estimate site in Sustenaut/shared-infra's pubkit.json.
+# is the estimate site in Sustenaut/shared-infra's pubrules.json.
 name: deploy
 
 on:
@@ -80,7 +80,7 @@ jobs:
         run: |
           npx --no-install esbuild worker/index.js --bundle --format=esm --outfile=site/_worker.js
 
-      # With the locked wrangler, not pubkit's deploy-static: that brings a public-site check on
+      # With the locked wrangler, not pubrules's deploy-static: that brings a public-site check on
       # each pull request, for pages link previews can read, and these sit behind a sign-in.
       - name: Deploy
         if: vars.CLOUDFLARE_ACCOUNT_ID != ''
