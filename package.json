@@ -2,6 +2,7 @@
   "private": true,
   "devDependencies": {
     "@cucumber/cucumber": "13.3.0",
+    "@sustenaut/pubtest": "github:Sustenaut/pubtest#v0.2.1",
     "esbuild": "0.28.2",
     "wrangler": "4.156.0"
   }

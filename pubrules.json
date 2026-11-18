@@ -2,7 +2,7 @@
   "kind": "service",
   "ci": {
     "with": {
-      "setup": "python -m venv .venv && .venv/bin/pip install --quiet -r requirements.lock && npm ci --ignore-scripts",
+      "setup": "python -m venv .venv && .venv/bin/pip install --quiet -r requirements.lock && tests/install-lock .venv/bin/pip && npm ci --ignore-scripts",
       "test": "PATH=$PWD/.venv/bin:$PATH .venv/bin/python -m pytest -q && npx --no-install cucumber-js",
       "shellcheck": "with-secrets *.sh"
     }

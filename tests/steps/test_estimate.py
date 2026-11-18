@@ -1,27 +1,26 @@
-"""The estimate models, the helpers their pages use, and the site build
-(): the notebooks run natively, inputs come from a publication
-bundle when it has them, links match pub.sustenaut.eu, the wheel is the same
-bytes every time, and an exported page loads nothing from another origin."""
+"""The estimate models, the helpers their pages use, and the site build: the
+suite's own Whens call them through `attempt`, and pubtest's steps
+(GRAMMAR.md) check what came back."""
 import gzip
 import importlib
 import importlib.util
 import json
-import pkgutil
-import sys
+import shutil
+import subprocess
+import zipfile
 from pathlib import Path
 
 import numpy as np
 import pytest
+from pubtest.core import value
+from pytest_bdd import given, parsers, scenarios, then, when
 
-from estimate import models, site
+from estimate import site
 from estimate.models import example
-from pytest_bdd import scenarios, then
 
 scenarios("../features/estimate.feature")
 
 ROOT = Path(__file__).resolve().parents[2]
-NOTEBOOKS = sorted((ROOT / "notebooks").glob("*.py"))
-MODELS = [importlib.import_module(f"estimate.models.{m.name}") for m in pkgutil.iter_modules(models.__path__)]
 
 spec = importlib.util.spec_from_file_location("estimate_build", ROOT / "build.py")
 build = importlib.util.module_from_spec(spec)
@@ -32,48 +31,75 @@ KIND = "pub:sha2-256:kind"
 THREE = "pub:sha2-256:three"
 
 
-@then("models follow the contract")
-def models_follow_the_contract():
-    """Every case of the parametrized test this was, in turn."""
-    for module in MODELS:
-        module = module.values[0] if type(module).__name__ == "ParameterSet" else module
-        _case_models_follow_the_contract(module=module)
+# --- the models ------------------------------------------------------------------
 
 
-def _case_models_follow_the_contract(module):
-    assert {"name", "version"} <= module.MODEL.keys()
-    assert module.OUTPUTS and all({"name", "unit", "description"} <= o.keys() for o in module.OUTPUTS)
-    for p in module.PARAMETERS:
-        assert {"name", "unit", "low", "likely", "high", "publet"} <= p.keys()
-        assert p["low"] <= p["likely"] <= p["high"]
-        assert isinstance(p["publet"], str) and p["publet"]
+def _model(name):
+    return importlib.import_module(f"estimate.models.{name}")
 
 
-@then("notebook runs")
-def notebook_runs():
-    """Every case of the parametrized test this was, in turn."""
-    for path in NOTEBOOKS:
-        path = path.values[0] if type(path).__name__ == "ParameterSet" else path
-        _case_notebook_runs(path=path)
+@when(parsers.parse('I read the description of the model "{name}"'))
+def model_description(ctx, name):
+    ctx.attempt(lambda: _model(name).MODEL)
 
 
-def _case_notebook_runs(path):
-    spec = importlib.util.spec_from_file_location(f"estimate_nb_{path.stem}", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    module.app.run()  # raises if any cell fails
+@when(parsers.parse('I read the outputs of the model "{name}"'))
+def model_outputs(ctx, name):
+    ctx.attempt(lambda: _model(name).OUTPUTS)
 
 
-@then("example result is fixed by the seed")
-def example_result_is_fixed_by_the_seed():
-    """The number the browser check compares the page against."""
-    result = example.quantiles(example.sample(site.generator(), example.PARAMETERS))
-    assert result == example.quantiles(example.sample(np.random.default_rng(42), example.PARAMETERS))
-    low, mid, high = result
-    assert 40 < low < mid < high < 90
+@when(parsers.parse('I read the parameters of the model "{name}"'))
+def model_parameters(ctx, name):
+    ctx.attempt(lambda: _model(name).PARAMETERS)
 
 
-def write_bundle(folder: Path, cell) -> Path:
+@then(parsers.parse('each item of the result has "{key}"'))
+def each_has(ctx, key):
+    assert all(key in item for item in ctx.result), ctx.result
+
+
+@then(parsers.parse('each item of the result has "{low}", "{likely}" and "{high}" in that order'))
+def each_in_order(ctx, low, likely, high):
+    assert all(item[low] <= item[likely] <= item[high] for item in ctx.result), ctx.result
+
+
+@then(parsers.parse('each item of the result has "{key}" as text that is not empty'))
+def each_text(ctx, key):
+    assert all(isinstance(item[key], str) and item[key] for item in ctx.result), ctx.result
+
+
+@when(parsers.parse('I run the notebook "{path}"'))
+def notebook_runs(ctx, path):
+    def run():
+        notebook = ROOT / path
+        loaded = importlib.util.spec_from_file_location(f"estimate_nb_{notebook.stem}", notebook)
+        module = importlib.util.module_from_spec(loaded)
+        loaded.loader.exec_module(module)
+        module.app.run()  # raises if any cell fails
+
+    ctx.attempt(run)
+
+
+@when("I sample the example model with the site's generator")
+def sample_site(ctx):
+    ctx.attempt(lambda: example.quantiles(example.sample(site.generator(), example.PARAMETERS)))
+
+
+@then(parsers.parse("the result is what the example model gives with the seed {seed:d}"))
+def seeded(ctx, seed):
+    assert ctx.result == example.quantiles(example.sample(np.random.default_rng(seed), example.PARAMETERS))
+
+
+@then(parsers.parse("the result rises from above {low:d} to below {high:d}"))
+def rises(ctx, low, high):
+    first, mid, last = ctx.result
+    assert low < first < mid < last < high, ctx.result
+
+
+# --- inputs from a publication bundle ------------------------------------------
+
+
+def _write_bundle(folder: Path, cell) -> Path:
     """A bundle like `pub bundle` writes: an empirical claim measuring a kind
     with a three-point estimate, rows by crop."""
     (folder / "o").mkdir(parents=True)
@@ -93,162 +119,200 @@ def write_bundle(folder: Path, cell) -> Path:
     return folder
 
 
-def parameter(**kw):
-    return {"name": "basil", "unit": "g/{tray}", "low": 1.0, "likely": 2.0, "high": 3.0, "publet": CLAIM, "row": "basil", "status": "placeholder", **kw}
+def _parameter(**kw):
+    return {"name": "basil", "unit": "g/{tray}", "low": 1.0, "likely": 2.0, "high": 3.0, "publet": CLAIM,
+            "row": "basil", "status": "placeholder", **kw}
 
 
-@then("bundle values replace the models")
-def bundle_values_replace_the_models(tmp_path):
-    """Every case of the parametrized test this was, in turn."""
-    for cell in [[50, 70, 100], {"low": 50, "likely": 70, "high": 100}]:
-        cell = cell.values[0] if type(cell).__name__ == "ParameterSet" else cell
-        case_dir = tmp_path / f"case-{len(list(tmp_path.iterdir()))}"
-        case_dir.mkdir()
-        _case_bundle_values_replace_the_models(cell=cell, tmp_path=case_dir)
+@given(parsers.parse('a bundle "{path}" whose basil row holds "{cell}"'))
+def a_bundle(ctx, path, cell):
+    _write_bundle(ctx.directory / path, value(cell))
 
 
-def _case_bundle_values_replace_the_models(tmp_path, cell):
-    bundle = site.Bundle(write_bundle(tmp_path / "bundle", cell))
-    for publet in (CLAIM, "harvest per tray"):
-        [p] = site.with_bundle([parameter(publet=publet)], bundle)
-        assert (p["low"], p["likely"], p["high"]) == (50, 70, 100)
-        assert p["status"] == "from the publication"
+@given(parsers.parse('the bundle "{path}"\'s radish row holds "{cell}"'))
+def radish_row(ctx, path, cell):
+    claim_path = ctx.directory / path / "o" / f"{CLAIM}.json"
+    claim = json.loads(claim_path.read_text())
+    claim["object"]["body"]["data"]["rows"][1][1] = value(cell)
+    claim_path.write_text(json.dumps(claim))
 
 
-@then("model values stay when the bundle has none")
-def model_values_stay_when_the_bundle_has_none(tmp_path):
-    bundle = site.Bundle(write_bundle(tmp_path / "bundle", None))
-    [p] = site.with_bundle([parameter()], bundle)
-    assert (p["low"], p["likely"], p["high"]) == (1.0, 2.0, 3.0)
-    assert p["status"] == "placeholder (not measured yet)"
-    [p] = site.with_bundle([parameter()], site.Bundle(None))
-    assert p["status"] == "placeholder (no publication bundle next to this page)"
-    [p] = site.with_bundle([parameter(publet="pub:sha2-256:elsewhere")], bundle)
-    assert p["status"] == "placeholder (publet not in the publication)"
+@when(parsers.parse('I read the parameter with "{key}" set to "{wanted}" against the bundle "{path}"'))
+def parameter_with(ctx, key, wanted, path):
+    ctx.attempt(lambda: site.with_bundle([_parameter(**{key: value(wanted)})], site.Bundle(ctx.directory / path))[0])
 
 
-@then("bundle values in another unit are not used")
-def bundle_values_in_another_unit_are_not_used(tmp_path):
-    bundle = site.Bundle(write_bundle(tmp_path / "bundle", [50, 70, 100]))
-    [p] = site.with_bundle([parameter(unit="kg/{tray}")], bundle)
-    assert p["low"] == 1.0 and "g/{tray}" in p["status"]
+@when(parsers.parse('I read the parameter against the bundle "{path}"'))
+def parameter_plain(ctx, path):
+    ctx.attempt(lambda: site.with_bundle([_parameter()], site.Bundle(ctx.directory / path))[0])
 
 
-@then("several rows need a row")
-def several_rows_need_a_row(tmp_path):
-    folder = write_bundle(tmp_path / "bundle", [50, 70, 100])
-    claim = json.loads((folder / "o" / f"{CLAIM}.json").read_text())
-    claim["object"]["body"]["data"]["rows"][1][1] = [1, 2, 3]
-    (folder / "o" / f"{CLAIM}.json").write_text(json.dumps(claim))
-    [p] = site.with_bundle([parameter(row=None)], site.Bundle(folder))
-    assert p["low"] == 1.0 and "name the row" in p["status"]
+@when("I read the parameter against no bundle")
+def parameter_no_bundle(ctx):
+    ctx.attempt(lambda: site.with_bundle([_parameter()], site.Bundle(None))[0])
 
 
-@then("the real bundle is read when built")
-def the_real_bundle_is_read_when_built(tmp_path):
+@given(parsers.parse('the pinned publication bundled into "{path}" by a pub with `bundle`'))
+def real_bundle(ctx, path):
     """Publication 0 as pub bundle writes it, when a pub with `bundle` is around."""
-    import shutil
-    import subprocess
-
     pub = shutil.which("pub")
     if not pub or subprocess.run([pub, "bundle"], capture_output=True, text=True).stderr.startswith("unknown command"):
         pytest.skip("no pub with `bundle` on PATH")
     if not (ROOT / "objects").is_dir():
         pytest.skip("no objects/: ./fetch-publication.sh puts the pinned publication there")
-    subprocess.run([pub, "bundle", f"--dir={ROOT / 'objects'}", f"--out={tmp_path}"], check=True, capture_output=True)
-    [p] = site.with_bundle(example.PARAMETERS, site.Bundle(tmp_path))
-    assert p["status"] == "placeholder (not measured yet)"
+    subprocess.run([pub, "bundle", f"--dir={ROOT / 'objects'}", f"--out={ctx.directory / path}"], check=True,
+                   capture_output=True)
 
 
-@then("links match what pub site serves")
-def links_match_what_pub_site_serves():
-    assert site.publet_url("pub:sha2-256:abc") == "https://pub.sustenaut.eu/o/pub:sha2-256:abc/"
-    assert site.publet_url("{tray}") == "https://pub.sustenaut.eu/def/%7Btray%7D/"
-    assert site.publet_url("harvest per tray") == "https://pub.sustenaut.eu/def/harvest%20per%20tray/"
-    table = site.input_table(example.PARAMETERS)
-    assert f"(https://pub.sustenaut.eu/o/{example.PARAMETERS[0]['publet']}/)" in table
-    assert "| placeholder |" in table
+@when(parsers.parse('I read the example model\'s parameters against the bundle "{path}"'))
+def example_with_bundle(ctx, path):
+    ctx.attempt(lambda: site.with_bundle(example.PARAMETERS, site.Bundle(ctx.directory / path)))
 
 
-@then("rounding")
-def rounding():
-    assert site.rounded(62.681313) == 62.7
-    assert site.rounded(0.0123456) == 0.0123
-    assert site.rounded(123456) == 123000
-    assert site.fmt(62.681313) == "62.7"
-    assert site.fmt(40.0) == "40.0"
-    assert site.fmt(123456) == "123,000"
-    assert "3 significant figures" in site.rounding_note()
+# --- what a page shows -------------------------------------------------------------
 
 
-@then("citation")
-def citation(tmp_path):
-    native = site.citation(None)
-    assert native["wheel"] is None
-    assert native["commit"] == "unknown" or len(native["commit"]) == 40
-    (tmp_path / "public").mkdir()
-    (tmp_path / "public" / "build.json").write_text(json.dumps({"wheel": "estimate-0.1.0-py3-none-any.whl", "sha256": "ab" * 32, "commit": "c" * 40}))
-    cite = site.citation(tmp_path)
-    assert cite["sha256"] == "ab" * 32
-    assert "sha256 `" + "ab" * 32 in site.citation_text(cite)
+@when(parsers.parse('I ask for the link to "{publet}"'))
+def link_to(ctx, publet):
+    ctx.attempt(lambda: site.publet_url(publet))
 
 
-@then("wheel is reproducible and installable")
-def wheel_is_reproducible_and_installable(tmp_path):
-    import zipfile
-
-    one, two = build.wheel(tmp_path / "1"), build.wheel(tmp_path / "2")
-    assert one.read_bytes() == two.read_bytes()
-    names = zipfile.ZipFile(one).namelist()
-    assert "estimate/site.py" in names and "estimate/models/example.py" in names
-    assert any(n.endswith(".dist-info/RECORD") for n in names)
+@when("I make the input table of the example model")
+def input_table(ctx):
+    ctx.attempt(lambda: site.input_table(example.PARAMETERS))
 
 
-@then("vendor lock pins everything")
-def vendor_lock_pins_everything():
-    pins = json.loads(build.LOCK.read_text())
-    assert (pins["marimo"], pins["pyodide"]) == (build.MARIMO_VERSION, build.PYODIDE_VERSION)
+@when(parsers.parse("I round {number}"))
+def round_number(ctx, number):
+    ctx.attempt(lambda: site.rounded(value(number)))
+
+
+@when(parsers.parse("I format {number}"))
+def format_number(ctx, number):
+    ctx.attempt(lambda: site.fmt(value(number)))
+
+
+@when("I ask for the rounding note")
+def rounding_note(ctx):
+    ctx.attempt(site.rounding_note)
+
+
+@when("I cite a native run")
+def cite_native(ctx):
+    ctx.attempt(lambda: site.citation(None))
+
+
+@then(parsers.parse('the result\'s "{key}" is "unknown" or a 40-character hash'))
+def commit_or_unknown(ctx, key):
+    got = ctx.result[key]
+    assert got == "unknown" or len(got) == 40, got
+
+
+@when(parsers.parse('I cite the build in "{path}"'))
+def cite_build(ctx, path):
+    ctx.attempt(lambda: site.citation(ctx.directory / path))
+
+
+@when(parsers.parse('I write the citation of the build in "{path}"'))
+def citation_text(ctx, path):
+    ctx.attempt(lambda: site.citation_text(site.citation(ctx.directory / path)))
+
+
+# --- the build ------------------------------------------------------------------
+
+
+@when(parsers.parse('I build the wheel into "{path}"'))
+def build_wheel(ctx, path):
+    ctx.attempt(lambda: build.wheel(ctx.directory / path))
+
+
+@then(parsers.parse('the files "{one}" and "{two}" are the same bytes'))
+def same_bytes(ctx, one, two):
+    assert (ctx.directory / one).read_bytes() == (ctx.directory / two).read_bytes()
+
+
+@when(parsers.parse('I list what the wheel built into "{path}" holds'))
+def wheel_names(ctx, path):
+    ctx.attempt(lambda: zipfile.ZipFile(build.wheel(ctx.directory / path)).namelist())
+
+
+@when("I read the vendor lock")
+def vendor_lock(ctx):
+    ctx.attempt(lambda: json.loads(build.LOCK.read_text()))
+
+
+@then("it pins the marimo and Pyodide versions build.py names")
+def pins_versions(ctx):
+    assert (ctx.result["marimo"], ctx.result["pyodide"]) == (build.MARIMO_VERSION, build.PYODIDE_VERSION)
+
+
+@then("it pins every package build.py names, each by sha256, with what it depends on")
+def pins_packages(ctx):
+    pins = ctx.result
     assert set(build.PACKAGES) <= set(pins["packages"])
     for entry in pins["packages"].values():
         assert len(entry["sha256"]) == 64
         assert set(entry["depends"]) <= set(pins["packages"])
-    assert set(pins["pyodide_core"]) == set(build.PYODIDE_CORE)
-    assert set(pins["npm"]) == set(build.NPM)
 
 
-@then("marimo matches the pins")
-def marimo_matches_the_pins():
+@then("it pins Pyodide's core files and the npm packages build.py names")
+def pins_core(ctx):
+    assert set(ctx.result["pyodide_core"]) == set(build.PYODIDE_CORE)
+    assert set(ctx.result["npm"]) == set(build.NPM)
+
+
+@when("I ask marimo for its version")
+def marimo_version(ctx):
     import marimo
 
-    assert marimo.__version__ == build.MARIMO_VERSION
-    lock = (ROOT / "requirements.lock").read_text()
-    assert f"marimo=={build.MARIMO_VERSION}" in lock
+    ctx.attempt(lambda: marimo.__version__)
 
 
-@then("a bundle holds each file where its index says")
-def a_bundle_holds_each_file_where_its_index_says(tmp_path):
-    files = {"/vendor/a.whl": tmp_path / "a", "/example/public/o/pub:x.json": tmp_path / "b"}
-    files["/vendor/a.whl"].write_bytes(b"first")
-    files["/example/public/o/pub:x.json"].write_bytes(b"second file")
-    bundle = build.pack(files)
-    packed = gzip.decompress(bundle)
+@then("the result is the marimo version build.py names")
+def marimo_pinned(ctx):
+    assert ctx.result == build.MARIMO_VERSION, ctx.result
+
+
+@then("requirements.lock pins marimo at the version build.py names")
+def marimo_locked():
+    assert f"marimo=={build.MARIMO_VERSION}" in (ROOT / "requirements.lock").read_text()
+
+
+@when(parsers.parse('I pack "{one}" as "{one_at}" and "{two}" as "{two_at}"'))
+def pack(ctx, one, one_at, two, two_at):
+    ctx.packed = {one_at: ctx.directory / one, two_at: ctx.directory / two}
+    ctx.attempt(lambda: build.pack(ctx.packed))
+
+
+@then("the packed bundle holds each file where its index says")
+def packed_where_indexed(ctx):
+    packed = gzip.decompress(ctx.result)
     length = int.from_bytes(packed[:4], "little")
     index = json.loads(packed[4:4 + length])
     start = 4 + length
-    for path, source in files.items():
+    for path, source in ctx.packed.items():
         offset, size = index[path]
         assert packed[start + offset:start + offset + size] == source.read_bytes()
-    assert build.pack(files) == bundle  # the same bytes, so the same hash in its name
 
 
-@then("exported page loads only from this site")
-def exported_page_loads_only_from_this_site(tmp_path):
-    """The export is pointed at /vendor/ and no CDN address is left in it."""
+@then("packing them again gives the same bytes")
+def packed_again(ctx):
+    assert build.pack(ctx.packed) == ctx.result  # the same bytes, so the same hash in its name
+
+
+@when(parsers.parse('I export "{notebook}" into "{path}"'))
+def export(ctx, notebook, path):
     pins = json.loads(build.LOCK.read_text())
-    build.export(NOTEBOOKS[0], tmp_path / "page", pins)
-    page = (tmp_path / "page" / "index.html").read_text()
+    ctx.attempt(lambda: build.export(ROOT / notebook, ctx.directory / path, pins))
+
+
+@then(parsers.parse('"{path}" points Pyodide at the version build.py vendors'))
+def points_at_pyodide(ctx, path):
+    page = (ctx.directory / path).read_text()
     assert f'data-pyodide-index-url="../vendor/pyodide/v{build.PYODIDE_VERSION}/"' in page
-    assert 'data-pyodide-lockfile-url="../vendor/pyodide/' in page
-    for asset in (tmp_path / "page" / "assets").glob("*.js"):
+
+
+@then(parsers.parse('no script in "{path}" loads from a third party'))
+def no_third_party(ctx, path):
+    for asset in (ctx.directory / path).glob("*.js"):
         assert not build.THIRD_PARTY.search(asset.read_text()), asset.name
-    assert not (tmp_path / "page" / "CLAUDE.md").exists()
